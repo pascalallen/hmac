@@ -18,7 +18,13 @@ type Authenticator struct {
 	ErrorMessage  string
 }
 
-var requiredHeaders = []string{"Authorization", "Credential", "Signature", "X-Timestamp", "X-Nonce"}
+var requiredHeaders = []string{
+	"Authorization",
+	"Credential",
+	"Signature",
+	"X-Timestamp",
+	"X-Nonce",
+}
 
 func NewAuthenticator(public string, private string, timeTolerance int64) (*Authenticator, error) {
 	if len(public) == 0 {
@@ -34,7 +40,13 @@ func NewAuthenticator(public string, private string, timeTolerance int64) (*Auth
 		return nil, err
 	}
 
-	return &Authenticator{public: public, private: b, timeTolerance: timeTolerance}, nil
+	a := &Authenticator{
+		public:        public,
+		private:       b,
+		timeTolerance: timeTolerance,
+	}
+
+	return a, nil
 }
 
 func (a *Authenticator) Validate(r http.Request) bool {
