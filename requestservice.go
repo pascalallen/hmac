@@ -29,9 +29,7 @@ func NewRequestService(public string, private string) (*RequestService, error) {
 		return nil, err
 	}
 
-	r := &RequestService{public, bytes}
-
-	return r, nil
+	return &RequestService{public, bytes}, nil
 }
 
 func (rs *RequestService) SignRequest(request *http.Request) (*http.Request, error) {
