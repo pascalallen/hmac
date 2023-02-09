@@ -37,7 +37,7 @@ func NewAuthenticator(public string, private string, timeTolerance int64) (*Auth
 
 	b, err := hex.DecodeString(private)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("malformed private key")
 	}
 
 	a := &Authenticator{
