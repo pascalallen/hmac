@@ -3,7 +3,6 @@ package hmac
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -15,8 +14,8 @@ type Authenticator struct {
 	public        string
 	private       []byte
 	timeTolerance int64
-	errorCode     int
-	errorMessage  string
+	ErrorCode     int
+	ErrorMessage  string
 }
 
 var requiredHeaders = []string{"Authorization", "Credential", "Signature", "X-Timestamp", "X-Nonce"}
@@ -41,8 +40,8 @@ func NewAuthenticator(public string, private string, timeTolerance int64) (*Auth
 func (a *Authenticator) Validate(r http.Request) bool {
 	for _, h := range requiredHeaders {
 		if r.Header.Get(h) == "" {
-			a.errorCode = http.StatusUnprocessableEntity
-			a.errorMessage = fmt.Sprintf("%s is a required header", h)
+			a.ErrorCode = http.StatusUnprocessableEntity
+			a.ErrorMessage = fmt.Sprintf("%s is a required header", h)
 
 			return false
 		}
@@ -52,29 +51,29 @@ func (a *Authenticator) Validate(r http.Request) bool {
 	timestamp, _ := strconv.ParseInt(r.Header.Get("X-Timestamp"), 10, 64)
 	tolerance := a.timeTolerance
 	if requestTime < timestamp || requestTime-tolerance > timestamp {
-		a.errorCode = http.StatusBadRequest
-		a.errorMessage = "Timestamp out of bounds"
+		a.ErrorCode = http.StatusBadRequest
+		a.ErrorMessage = "Timestamp out of bounds"
 
 		return false
 	}
 
 	if a.public != r.Header.Get("Credential") {
-		a.errorCode = http.StatusForbidden
-		a.errorMessage = "Not authorized"
+		a.ErrorCode = http.StatusForbidden
+		a.ErrorMessage = "Not authorized"
 
 		return false
 	}
 
 	var content []byte
 	if _, err := r.Body.Read(content); err != nil {
-		a.errorCode = http.StatusUnprocessableEntity
-		a.errorMessage = "Error reading request body"
+		a.ErrorCode = http.StatusUnprocessableEntity
+		a.ErrorMessage = "Error reading request body"
 
 		return false
 	}
 	if len(content) > 0 && r.Header.Get("X-Content-SHA256") == "" {
-		a.errorCode = http.StatusUnprocessableEntity
-		a.errorMessage = "X-Content-SHA256 header is required with content"
+		a.ErrorCode = http.StatusUnprocessableEntity
+		a.ErrorMessage = "X-Content-SHA256 header is required with content"
 
 		return false
 	}
@@ -82,8 +81,8 @@ func (a *Authenticator) Validate(r http.Request) bool {
 		contentHash := sha256.New()
 		contentHash.Write(content)
 		if bytes.Compare(contentHash.Sum(nil), []byte(r.Header.Get("X-Content-SHA256"))) != 0 {
-			a.errorCode = http.StatusBadRequest
-			a.errorMessage = "Invalid content hash"
+			a.ErrorCode = http.StatusBadRequest
+			a.ErrorMessage = "Invalid content hash"
 
 			return false
 		}
@@ -105,10 +104,9 @@ func (a *Authenticator) Validate(r http.Request) bool {
 
 	signature := CreateSignature(canonicalRequest, timestamp, string(a.private))
 
-	signatureBytes, _ := base64.StdEncoding.DecodeString(signature)
-	if bytes.Compare(signatureBytes, []byte(r.Header.Get("Signature"))) != 0 {
-		a.errorCode = http.StatusForbidden
-		a.errorMessage = "Not authorized"
+	if bytes.Compare([]byte(signature), []byte(r.Header.Get("Signature"))) != 0 {
+		a.ErrorCode = http.StatusForbidden
+		a.ErrorMessage = "Not authorized"
 
 		return false
 	}

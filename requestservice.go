@@ -51,6 +51,8 @@ func (rs *RequestService) SignRequest(request *http.Request) (*http.Request, err
 
 	canonicalRequest := CreateCanonicalRequestString(method, authority, path, query, headers)
 
+	headers["Authorization"] = "HMAC-SHA256"
+	headers["Credential"] = rs.public
 	headers["Signature"] = CreateSignature(canonicalRequest, timestamp, string(rs.private))
 
 	// TODO: Sort headers?
@@ -79,9 +81,6 @@ func (rs *RequestService) buildHeaders(timestamp int64, content []byte) (map[str
 		contentHashString := base64.StdEncoding.EncodeToString(contentHash.Sum(nil))
 		headers["X-Content-SHA256"] = contentHashString
 	}
-
-	headers["Authorization"] = "HMAC-SHA256"
-	headers["Credential"] = rs.public
 
 	return headers, nil
 }
