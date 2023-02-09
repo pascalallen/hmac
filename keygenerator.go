@@ -2,7 +2,7 @@ package hmac
 
 import (
 	"crypto/rand"
-	"strconv"
+	"encoding/hex"
 )
 
 // GenerateSecureRandom generates a secure key to use with HMAC authentication.
@@ -13,10 +13,5 @@ func GenerateSecureRandom(length int) (string, error) {
 		return "", err
 	}
 
-	i, err := strconv.ParseInt(string(bytes), 2, 0)
-	if err != nil {
-		return "", err
-	}
-
-	return strconv.FormatInt(i, 16), nil
+	return hex.EncodeToString(bytes), nil
 }

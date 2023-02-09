@@ -3,6 +3,7 @@ package hmac
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -11,7 +12,7 @@ import (
 
 type RequestService struct {
 	public  string
-	private string
+	private []byte
 }
 
 func NewRequestService(public string, private string) (*RequestService, error) {
@@ -23,13 +24,12 @@ func NewRequestService(public string, private string) (*RequestService, error) {
 		return nil, fmt.Errorf("private key required")
 	}
 
-	ui, err := strconv.ParseUint(private, 16, 64)
+	bytes, err := hex.DecodeString(private)
 	if err != nil {
 		return nil, err
 	}
-	private = fmt.Sprintf("%016b", ui)
 
-	r := &RequestService{public, private}
+	r := &RequestService{public, bytes}
 
 	return r, nil
 }
@@ -53,7 +53,7 @@ func (rs *RequestService) SignRequest(request *http.Request) (*http.Request, err
 
 	canonicalRequest := CreateCanonicalRequestString(method, authority, path, query, headers)
 
-	headers["Signature"] = CreateSignature(canonicalRequest, timestamp, rs.private)
+	headers["Signature"] = CreateSignature(canonicalRequest, timestamp, string(rs.private))
 
 	// TODO: Sort headers?
 
