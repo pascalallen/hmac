@@ -21,7 +21,7 @@ import "github.com/pascalallen/hmac"
 
 publicKey := hmac.GenerateSecureRandom(16)
 privateKey := hmac.GenerateSecureRandom(16)
-timeTolerance := 300
+var timeTolerance int64 = 300
 
 request, _ := http.NewRequest(
     http.MethodPost,
