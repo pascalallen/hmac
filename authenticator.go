@@ -3,8 +3,10 @@ package hmac
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -59,8 +61,15 @@ func (a *Authenticator) Validate(r http.Request) bool {
 		}
 	}
 
+	timestamp, err := strconv.ParseInt(r.Header.Get("X-Timestamp"), 10, 64)
+	if err != nil {
+		a.ErrorCode = http.StatusBadRequest
+		a.ErrorMessage = "Invalid timestamp"
+
+		return false
+	}
+
 	requestTime := time.Now().Unix()
-	timestamp, _ := strconv.ParseInt(r.Header.Get("X-Timestamp"), 10, 64)
 	tolerance := a.timeTolerance
 	if requestTime < timestamp || requestTime-tolerance > timestamp {
 		a.ErrorCode = http.StatusBadRequest
@@ -76,13 +85,14 @@ func (a *Authenticator) Validate(r http.Request) bool {
 		return false
 	}
 
-	var content []byte
-	if _, err := r.Body.Read(content); err != nil {
+	content, err := io.ReadAll(r.Body)
+	if err != nil {
 		a.ErrorCode = http.StatusUnprocessableEntity
 		a.ErrorMessage = "Error reading request body"
 
 		return false
 	}
+	r.Body = io.NopCloser(bytes.NewReader(content))
 	if len(content) > 0 && r.Header.Get("X-Content-SHA256") == "" {
 		a.ErrorCode = http.StatusUnprocessableEntity
 		a.ErrorMessage = "X-Content-SHA256 header is required with content"
@@ -92,7 +102,7 @@ func (a *Authenticator) Validate(r http.Request) bool {
 	if len(content) > 0 {
 		contentHash := sha256.New()
 		contentHash.Write(content)
-		if bytes.Compare(contentHash.Sum(nil), []byte(r.Header.Get("X-Content-SHA256"))) != 0 {
+		if bytes.Compare([]byte(base64.StdEncoding.EncodeToString(contentHash.Sum(nil))), []byte(r.Header.Get("X-Content-SHA256"))) != 0 {
 			a.ErrorCode = http.StatusBadRequest
 			a.ErrorMessage = "Invalid content hash"
 

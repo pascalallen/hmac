@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"sort"
 	"strconv"
 )
 
@@ -13,9 +14,15 @@ func CreateCanonicalRequestString(method string, authority string, path string, 
 		path = "/"
 	}
 
+	keys := make([]string, 0, len(headers))
+	for k := range headers {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	headerString := ""
-	for name, value := range headers {
-		headerString += name + ":" + value + "\n"
+	for _, k := range keys {
+		headerString += k + ":" + headers[k] + "\n"
 	}
 
 	if len(query) != 0 {
@@ -42,4 +49,25 @@ func CreateSignature(canonicalRequest string, timestamp int64, private string) s
 	signature.Write([]byte(stringToSign))
 
 	return base64.StdEncoding.EncodeToString(signature.Sum(nil))
+}
+
+func BuildHeaders(timestamp int64, content []byte) (map[string]string, error) {
+	headers := make(map[string]string)
+
+	nonce, err := GenerateSecureRandom(8)
+	if err != nil {
+		return nil, err
+	}
+
+	headers["X-Timestamp"] = strconv.FormatInt(timestamp, 10)
+	headers["X-Nonce"] = nonce
+
+	if len(content) > 0 {
+		contentHash := sha256.New()
+		contentHash.Write(content)
+		contentHashString := base64.StdEncoding.EncodeToString(contentHash.Sum(nil))
+		headers["X-Content-SHA256"] = contentHashString
+	}
+
+	return headers, nil
 }

@@ -2,72 +2,237 @@ package hmac
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 )
 
 func TestThatNewAuthenticatorReturnsInstanceOfAuthenticator(t *testing.T) {
-	pub, _ := GenerateSecureRandom(16)
-	priv, _ := GenerateSecureRandom(16)
-	tim := time.Now().Add(time.Hour * 1).Unix()
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey, _ := GenerateSecureRandom(16)
 
-	a, err := NewAuthenticator(pub, priv, tim)
-	if a == nil || err != nil {
+	authenticator, err := NewAuthenticator(publicKey, privateKey, 300)
+
+	if authenticator == nil || err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestThatNewAuthenticatorReturnsErrorEmptyPublicKey(t *testing.T) {
 	errMsg := "public key required"
-	pub := ""
-	priv, _ := GenerateSecureRandom(16)
-	tim := time.Now().Add(time.Hour * 1).Unix()
+	publicKey := ""
+	privateKey, _ := GenerateSecureRandom(16)
 
-	a, err := NewAuthenticator(pub, priv, tim)
-	if a != nil || err.Error() != errMsg {
+	authenticator, err := NewAuthenticator(publicKey, privateKey, 300)
+
+	if authenticator != nil || err.Error() != errMsg {
 		t.Fatal(err)
 	}
 }
 
 func TestThatNewAuthenticatorReturnsErrorEmptyPrivateKey(t *testing.T) {
 	errMsg := "private key required"
-	pub, _ := GenerateSecureRandom(16)
-	priv := ""
-	tim := time.Now().Add(time.Hour * 1).Unix()
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey := ""
 
-	a, err := NewAuthenticator(pub, priv, tim)
-	if a != nil || err.Error() != errMsg {
+	authenticator, err := NewAuthenticator(publicKey, privateKey, 300)
+
+	if authenticator != nil || err.Error() != errMsg {
 		t.Fatal(err)
 	}
 }
 
 func TestThatNewAuthenticatorReturnsErrorMalformedPrivateKey(t *testing.T) {
 	errMsg := "malformed private key"
-	pub, _ := GenerateSecureRandom(16)
-	priv := "true"
-	tim := time.Now().Add(time.Hour * 1).Unix()
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey := "true"
 
-	a, err := NewAuthenticator(pub, priv, tim)
-	if a != nil || err.Error() != errMsg {
+	authenticator, err := NewAuthenticator(publicKey, privateKey, 300)
+
+	if authenticator != nil || err.Error() != errMsg {
 		t.Fatal(err)
 	}
 }
 
-func TestThatValidateReturnsTrueOnValidRequest(t *testing.T) {
-	pub, _ := GenerateSecureRandom(16)
-	priv, _ := GenerateSecureRandom(16)
-	requestService, _ := NewRequestService(pub, priv)
+func TestThatValidateReturnsTrueValidRequest(t *testing.T) {
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey, _ := GenerateSecureRandom(16)
 
-	jsonBytes, _ := json.Marshal(map[string]string{"foo": "bar"})
-	request, _ := http.NewRequest("POST", "http://localhost:8080", bytes.NewReader(jsonBytes))
-	r, _ := requestService.SignRequest(request)
+	request, _ := http.NewRequest(
+		http.MethodPost,
+		"http://localhost:8080",
+		bytes.NewReader([]byte(`{"foo": "bar"}`)),
+	)
 
-	a, _ := NewAuthenticator(pub, priv, time.Now().Unix())
-	v := a.Validate(*r)
+	requestService, _ := NewRequestService(publicKey, privateKey)
+	signedRequest, _ := requestService.SignRequest(request)
 
-	if v == false {
-		t.Fatal(a.ErrorMessage)
+	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
+	isValid := authenticator.Validate(*signedRequest)
+
+	if isValid == false {
+		t.Fatal(authenticator.ErrorMessage)
+	}
+}
+
+func TestThatValidateReturnsFalseMissingHeader(t *testing.T) {
+	errMsg := "Authorization is a required header"
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey, _ := GenerateSecureRandom(16)
+
+	request, _ := http.NewRequest(
+		http.MethodPost,
+		"http://localhost:8080",
+		bytes.NewReader([]byte(`{"foo": "bar"}`)),
+	)
+
+	requestService, _ := NewRequestService(publicKey, privateKey)
+	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest.Header.Del("Authorization")
+
+	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
+	isValid := authenticator.Validate(*signedRequest)
+
+	if isValid == true || authenticator.ErrorMessage != errMsg {
+		t.Fatal(authenticator.ErrorMessage)
+	}
+}
+
+func TestThatValidateReturnsFalseInvalidTimestamp(t *testing.T) {
+	errMsg := "Invalid timestamp"
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey, _ := GenerateSecureRandom(16)
+
+	request, _ := http.NewRequest(
+		http.MethodPost,
+		"http://localhost:8080",
+		bytes.NewReader([]byte(`{"foo": "bar"}`)),
+	)
+
+	requestService, _ := NewRequestService(publicKey, privateKey)
+	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest.Header.Set("X-Timestamp", "some invalid timestamp")
+
+	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
+	isValid := authenticator.Validate(*signedRequest)
+
+	if isValid == true || authenticator.ErrorMessage != errMsg {
+		t.Fatal(authenticator.ErrorMessage)
+	}
+}
+
+func TestThatValidateReturnsFalseTimeOutOfBounds(t *testing.T) {
+	errMsg := "Timestamp out of bounds"
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey, _ := GenerateSecureRandom(16)
+
+	request, _ := http.NewRequest(
+		http.MethodPost,
+		"http://localhost:8080",
+		bytes.NewReader([]byte(`{"foo": "bar"}`)),
+	)
+
+	requestService, _ := NewRequestService(publicKey, privateKey)
+	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest.Header.Set("X-Timestamp", strconv.FormatInt(time.Now().Add(time.Hour*1).Unix(), 10))
+
+	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
+	isValid := authenticator.Validate(*signedRequest)
+
+	if isValid == true || authenticator.ErrorMessage != errMsg {
+		t.Fatal(authenticator.ErrorMessage)
+	}
+}
+
+func TestThatValidateReturnsFalseInvalidCredential(t *testing.T) {
+	errMsg := "Not authorized"
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey, _ := GenerateSecureRandom(16)
+
+	request, _ := http.NewRequest(
+		http.MethodPost,
+		"http://localhost:8080",
+		bytes.NewReader([]byte(`{"foo": "bar"}`)),
+	)
+
+	requestService, _ := NewRequestService(publicKey, privateKey)
+	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest.Header.Set("Credential", "invalid-credential-header")
+
+	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
+	isValid := authenticator.Validate(*signedRequest)
+
+	if isValid == true || authenticator.ErrorMessage != errMsg {
+		t.Fatal(authenticator.ErrorMessage)
+	}
+}
+
+func TestThatValidateReturnsFalseMissingContentHeader(t *testing.T) {
+	errMsg := "X-Content-SHA256 header is required with content"
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey, _ := GenerateSecureRandom(16)
+
+	request, _ := http.NewRequest(
+		http.MethodPost,
+		"http://localhost:8080",
+		bytes.NewReader([]byte(`{"foo": "bar"}`)),
+	)
+
+	requestService, _ := NewRequestService(publicKey, privateKey)
+	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest.Header.Del("X-Content-SHA256")
+
+	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
+	isValid := authenticator.Validate(*signedRequest)
+
+	if isValid == true || authenticator.ErrorMessage != errMsg {
+		t.Fatal(authenticator.ErrorMessage)
+	}
+}
+
+func TestThatValidateReturnsFalseInvalidContentHash(t *testing.T) {
+	errMsg := "Invalid content hash"
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey, _ := GenerateSecureRandom(16)
+
+	request, _ := http.NewRequest(
+		http.MethodPost,
+		"http://localhost:8080",
+		bytes.NewReader([]byte(`{"foo": "bar"}`)),
+	)
+
+	requestService, _ := NewRequestService(publicKey, privateKey)
+	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest.Header.Set("X-Content-SHA256", "invalid content hash")
+
+	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
+	isValid := authenticator.Validate(*signedRequest)
+
+	if isValid == true || authenticator.ErrorMessage != errMsg {
+		t.Fatal(authenticator.ErrorMessage)
+	}
+}
+
+func TestThatValidateReturnsFalseInvalidSignature(t *testing.T) {
+	errMsg := "Not authorized"
+	publicKey, _ := GenerateSecureRandom(16)
+	privateKey, _ := GenerateSecureRandom(16)
+
+	request, _ := http.NewRequest(
+		http.MethodPost,
+		"http://localhost:8080",
+		bytes.NewReader([]byte(`{"foo": "bar"}`)),
+	)
+
+	requestService, _ := NewRequestService(publicKey, privateKey)
+	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest.Header.Set("Signature", "invalid signature")
+
+	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
+	isValid := authenticator.Validate(*signedRequest)
+
+	if isValid == true || authenticator.ErrorMessage != errMsg {
+		t.Fatal(authenticator.ErrorMessage)
 	}
 }

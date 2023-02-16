@@ -1,12 +1,11 @@
 package hmac
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
+	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -24,12 +23,12 @@ func NewRequestService(public string, private string) (*RequestService, error) {
 		return nil, fmt.Errorf("private key required")
 	}
 
-	bytes, err := hex.DecodeString(private)
+	decodedPrivateKey, err := hex.DecodeString(private)
 	if err != nil {
 		return nil, err
 	}
 
-	return &RequestService{public, bytes}, nil
+	return &RequestService{public, decodedPrivateKey}, nil
 }
 
 func (rs *RequestService) SignRequest(request *http.Request) (*http.Request, error) {
@@ -39,12 +38,13 @@ func (rs *RequestService) SignRequest(request *http.Request) (*http.Request, err
 	query := request.URL.RawQuery
 	timestamp := time.Now().Unix()
 
-	var content []byte
-	if _, err := request.Body.Read(content); err != nil {
+	content, err := io.ReadAll(request.Body)
+	if err != nil {
 		return nil, err
 	}
+	request.Body = io.NopCloser(bytes.NewReader(content))
 
-	headers, err := rs.buildHeaders(timestamp, content)
+	headers, err := BuildHeaders(timestamp, content)
 	if err != nil {
 		return nil, err
 	}
@@ -55,32 +55,9 @@ func (rs *RequestService) SignRequest(request *http.Request) (*http.Request, err
 	headers["Credential"] = rs.public
 	headers["Signature"] = CreateSignature(canonicalRequest, timestamp, string(rs.private))
 
-	// TODO: Sort headers?
-
 	for name, value := range headers {
 		request.Header.Set(name, value)
 	}
 
 	return request, nil
-}
-
-func (rs *RequestService) buildHeaders(timestamp int64, content []byte) (map[string]string, error) {
-	headers := make(map[string]string)
-
-	nonce, err := GenerateSecureRandom(8)
-	if err != nil {
-		return nil, err
-	}
-
-	headers["X-Timestamp"] = strconv.FormatInt(timestamp, 10)
-	headers["X-Nonce"] = nonce
-
-	if len(content) != 0 {
-		contentHash := sha256.New()
-		contentHash.Write(content)
-		contentHashString := base64.StdEncoding.EncodeToString(contentHash.Sum(nil))
-		headers["X-Content-SHA256"] = contentHashString
-	}
-
-	return headers, nil
 }
