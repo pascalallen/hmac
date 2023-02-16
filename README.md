@@ -40,6 +40,20 @@ isValid := authenticator.Validate(*signedRequest)
 ...
 ```
 
+## Testing
+
+Run tests and create coverage profile:
+
+```bash
+go test -covermode=count -coverprofile=coverage.out
+```
+
+View test coverage profile:
+
+```bash
+go tool cover -html=coverage.out
+```
+
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first
@@ -50,9 +64,3 @@ Please make sure to update tests as appropriate.
 ## License
 
 [MIT](LICENSE)
-
-# Create Test Coverage Profile
-`go test -covermode=count -coverprofile=coverage.out`
-
-# Display Test Coverage Profile
-`go tool cover -html=coverage.out`
