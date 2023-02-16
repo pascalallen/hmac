@@ -25,29 +25,23 @@ func NewRequestService(public string, private string) (*RequestService, error) {
 
 	decodedPrivateKey, err := hex.DecodeString(private)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid private key")
 	}
 
 	return &RequestService{public, decodedPrivateKey}, nil
 }
 
-func (rs *RequestService) SignRequest(request *http.Request) (*http.Request, error) {
+func (rs *RequestService) SignRequest(request *http.Request) *http.Request {
 	method := request.Method
 	authority := request.Host
 	path := request.URL.Path
 	query := request.URL.RawQuery
 	timestamp := time.Now().Unix()
 
-	content, err := io.ReadAll(request.Body)
-	if err != nil {
-		return nil, err
-	}
+	content, _ := io.ReadAll(request.Body)
 	request.Body = io.NopCloser(bytes.NewReader(content))
 
-	headers, err := BuildHeaders(timestamp, content)
-	if err != nil {
-		return nil, err
-	}
+	headers := BuildHeaders(timestamp, content)
 
 	canonicalRequest := CreateCanonicalRequestString(method, authority, path, query, headers)
 
@@ -59,5 +53,5 @@ func (rs *RequestService) SignRequest(request *http.Request) (*http.Request, err
 		request.Header.Set(name, value)
 	}
 
-	return request, nil
+	return request
 }

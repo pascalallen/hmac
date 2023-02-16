@@ -85,13 +85,7 @@ func (a *Authenticator) Validate(r http.Request) bool {
 		return false
 	}
 
-	content, err := io.ReadAll(r.Body)
-	if err != nil {
-		a.ErrorCode = http.StatusUnprocessableEntity
-		a.ErrorMessage = "Error reading request body"
-
-		return false
-	}
+	content, _ := io.ReadAll(r.Body)
 	r.Body = io.NopCloser(bytes.NewReader(content))
 	if len(content) > 0 && r.Header.Get("X-Content-SHA256") == "" {
 		a.ErrorCode = http.StatusUnprocessableEntity

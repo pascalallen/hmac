@@ -9,8 +9,8 @@ import (
 )
 
 func TestThatNewAuthenticatorReturnsInstanceOfAuthenticator(t *testing.T) {
-	publicKey, _ := GenerateSecureRandom(16)
-	privateKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
+	privateKey := GenerateSecureRandom(16)
 
 	authenticator, err := NewAuthenticator(publicKey, privateKey, 300)
 
@@ -22,7 +22,7 @@ func TestThatNewAuthenticatorReturnsInstanceOfAuthenticator(t *testing.T) {
 func TestThatNewAuthenticatorReturnsErrorEmptyPublicKey(t *testing.T) {
 	errMsg := "public key required"
 	publicKey := ""
-	privateKey, _ := GenerateSecureRandom(16)
+	privateKey := GenerateSecureRandom(16)
 
 	authenticator, err := NewAuthenticator(publicKey, privateKey, 300)
 
@@ -33,7 +33,7 @@ func TestThatNewAuthenticatorReturnsErrorEmptyPublicKey(t *testing.T) {
 
 func TestThatNewAuthenticatorReturnsErrorEmptyPrivateKey(t *testing.T) {
 	errMsg := "private key required"
-	publicKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
 	privateKey := ""
 
 	authenticator, err := NewAuthenticator(publicKey, privateKey, 300)
@@ -45,7 +45,7 @@ func TestThatNewAuthenticatorReturnsErrorEmptyPrivateKey(t *testing.T) {
 
 func TestThatNewAuthenticatorReturnsErrorMalformedPrivateKey(t *testing.T) {
 	errMsg := "malformed private key"
-	publicKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
 	privateKey := "true"
 
 	authenticator, err := NewAuthenticator(publicKey, privateKey, 300)
@@ -56,17 +56,17 @@ func TestThatNewAuthenticatorReturnsErrorMalformedPrivateKey(t *testing.T) {
 }
 
 func TestThatValidateReturnsTrueValidRequest(t *testing.T) {
-	publicKey, _ := GenerateSecureRandom(16)
-	privateKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
+	privateKey := GenerateSecureRandom(16)
 
 	request, _ := http.NewRequest(
 		http.MethodPost,
-		"http://localhost:8080",
+		"http://localhost:8080?abc=xyz",
 		bytes.NewReader([]byte(`{"foo": "bar"}`)),
 	)
 
 	requestService, _ := NewRequestService(publicKey, privateKey)
-	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest := requestService.SignRequest(request)
 
 	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
 	isValid := authenticator.Validate(*signedRequest)
@@ -78,8 +78,8 @@ func TestThatValidateReturnsTrueValidRequest(t *testing.T) {
 
 func TestThatValidateReturnsFalseMissingHeader(t *testing.T) {
 	errMsg := "Authorization is a required header"
-	publicKey, _ := GenerateSecureRandom(16)
-	privateKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
+	privateKey := GenerateSecureRandom(16)
 
 	request, _ := http.NewRequest(
 		http.MethodPost,
@@ -88,7 +88,7 @@ func TestThatValidateReturnsFalseMissingHeader(t *testing.T) {
 	)
 
 	requestService, _ := NewRequestService(publicKey, privateKey)
-	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest := requestService.SignRequest(request)
 	signedRequest.Header.Del("Authorization")
 
 	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
@@ -101,8 +101,8 @@ func TestThatValidateReturnsFalseMissingHeader(t *testing.T) {
 
 func TestThatValidateReturnsFalseInvalidTimestamp(t *testing.T) {
 	errMsg := "Invalid timestamp"
-	publicKey, _ := GenerateSecureRandom(16)
-	privateKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
+	privateKey := GenerateSecureRandom(16)
 
 	request, _ := http.NewRequest(
 		http.MethodPost,
@@ -111,7 +111,7 @@ func TestThatValidateReturnsFalseInvalidTimestamp(t *testing.T) {
 	)
 
 	requestService, _ := NewRequestService(publicKey, privateKey)
-	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest := requestService.SignRequest(request)
 	signedRequest.Header.Set("X-Timestamp", "some invalid timestamp")
 
 	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
@@ -124,8 +124,8 @@ func TestThatValidateReturnsFalseInvalidTimestamp(t *testing.T) {
 
 func TestThatValidateReturnsFalseTimeOutOfBounds(t *testing.T) {
 	errMsg := "Timestamp out of bounds"
-	publicKey, _ := GenerateSecureRandom(16)
-	privateKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
+	privateKey := GenerateSecureRandom(16)
 
 	request, _ := http.NewRequest(
 		http.MethodPost,
@@ -134,7 +134,7 @@ func TestThatValidateReturnsFalseTimeOutOfBounds(t *testing.T) {
 	)
 
 	requestService, _ := NewRequestService(publicKey, privateKey)
-	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest := requestService.SignRequest(request)
 	signedRequest.Header.Set("X-Timestamp", strconv.FormatInt(time.Now().Add(time.Hour*1).Unix(), 10))
 
 	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
@@ -147,8 +147,8 @@ func TestThatValidateReturnsFalseTimeOutOfBounds(t *testing.T) {
 
 func TestThatValidateReturnsFalseInvalidCredential(t *testing.T) {
 	errMsg := "Not authorized"
-	publicKey, _ := GenerateSecureRandom(16)
-	privateKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
+	privateKey := GenerateSecureRandom(16)
 
 	request, _ := http.NewRequest(
 		http.MethodPost,
@@ -157,7 +157,7 @@ func TestThatValidateReturnsFalseInvalidCredential(t *testing.T) {
 	)
 
 	requestService, _ := NewRequestService(publicKey, privateKey)
-	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest := requestService.SignRequest(request)
 	signedRequest.Header.Set("Credential", "invalid-credential-header")
 
 	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
@@ -170,8 +170,8 @@ func TestThatValidateReturnsFalseInvalidCredential(t *testing.T) {
 
 func TestThatValidateReturnsFalseMissingContentHeader(t *testing.T) {
 	errMsg := "X-Content-SHA256 header is required with content"
-	publicKey, _ := GenerateSecureRandom(16)
-	privateKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
+	privateKey := GenerateSecureRandom(16)
 
 	request, _ := http.NewRequest(
 		http.MethodPost,
@@ -180,7 +180,7 @@ func TestThatValidateReturnsFalseMissingContentHeader(t *testing.T) {
 	)
 
 	requestService, _ := NewRequestService(publicKey, privateKey)
-	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest := requestService.SignRequest(request)
 	signedRequest.Header.Del("X-Content-SHA256")
 
 	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
@@ -193,8 +193,8 @@ func TestThatValidateReturnsFalseMissingContentHeader(t *testing.T) {
 
 func TestThatValidateReturnsFalseInvalidContentHash(t *testing.T) {
 	errMsg := "Invalid content hash"
-	publicKey, _ := GenerateSecureRandom(16)
-	privateKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
+	privateKey := GenerateSecureRandom(16)
 
 	request, _ := http.NewRequest(
 		http.MethodPost,
@@ -203,7 +203,7 @@ func TestThatValidateReturnsFalseInvalidContentHash(t *testing.T) {
 	)
 
 	requestService, _ := NewRequestService(publicKey, privateKey)
-	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest := requestService.SignRequest(request)
 	signedRequest.Header.Set("X-Content-SHA256", "invalid content hash")
 
 	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)
@@ -216,8 +216,8 @@ func TestThatValidateReturnsFalseInvalidContentHash(t *testing.T) {
 
 func TestThatValidateReturnsFalseInvalidSignature(t *testing.T) {
 	errMsg := "Not authorized"
-	publicKey, _ := GenerateSecureRandom(16)
-	privateKey, _ := GenerateSecureRandom(16)
+	publicKey := GenerateSecureRandom(16)
+	privateKey := GenerateSecureRandom(16)
 
 	request, _ := http.NewRequest(
 		http.MethodPost,
@@ -226,7 +226,7 @@ func TestThatValidateReturnsFalseInvalidSignature(t *testing.T) {
 	)
 
 	requestService, _ := NewRequestService(publicKey, privateKey)
-	signedRequest, _ := requestService.SignRequest(request)
+	signedRequest := requestService.SignRequest(request)
 	signedRequest.Header.Set("Signature", "invalid signature")
 
 	authenticator, _ := NewAuthenticator(publicKey, privateKey, 300)

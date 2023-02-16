@@ -51,13 +51,9 @@ func CreateSignature(canonicalRequest string, timestamp int64, private string) s
 	return base64.StdEncoding.EncodeToString(signature.Sum(nil))
 }
 
-func BuildHeaders(timestamp int64, content []byte) (map[string]string, error) {
+func BuildHeaders(timestamp int64, content []byte) map[string]string {
 	headers := make(map[string]string)
-
-	nonce, err := GenerateSecureRandom(8)
-	if err != nil {
-		return nil, err
-	}
+	nonce := GenerateSecureRandom(8)
 
 	headers["X-Timestamp"] = strconv.FormatInt(timestamp, 10)
 	headers["X-Nonce"] = nonce
@@ -69,5 +65,5 @@ func BuildHeaders(timestamp int64, content []byte) (map[string]string, error) {
 		headers["X-Content-SHA256"] = contentHashString
 	}
 
-	return headers, nil
+	return headers
 }

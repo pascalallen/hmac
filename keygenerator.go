@@ -7,11 +7,9 @@ import (
 
 // GenerateSecureRandom generates a secure key to use with HMAC authentication.
 // The returned string may be used as a public or private key.
-func GenerateSecureRandom(length int) (string, error) {
+func GenerateSecureRandom(length int) string {
 	bytes := make([]byte, length)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
+	_, _ = rand.Read(bytes)
 
-	return hex.EncodeToString(bytes), nil
+	return hex.EncodeToString(bytes)
 }
