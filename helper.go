@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 func CreateCanonicalRequestString(method string, authority string, path string, query string, headers map[string]string) string {
@@ -20,16 +21,16 @@ func CreateCanonicalRequestString(method string, authority string, path string, 
 	}
 	sort.Strings(keys)
 
-	headerString := ""
+	var headerString strings.Builder
 	for _, k := range keys {
-		headerString += k + ":" + headers[k] + "\n"
+		headerString.WriteString(k + ":" + headers[k] + "\n")
 	}
 
 	if len(query) != 0 {
 		query = "?" + query
 	}
 
-	return fmt.Sprintf("%s %s%s%s\n%s", method, authority, path, query, headerString)
+	return fmt.Sprintf("%s %s%s%s\n%s", method, authority, path, query, headerString.String())
 }
 
 func CreateSignature(canonicalRequest string, timestamp int64, private string) string {
