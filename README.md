@@ -1,6 +1,6 @@
 # hmac
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/pascalallen/hmac.svg)](https://pkg.go.dev/github.com/pascalallen/hmac)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pascalallen/hmac/v2.svg)](https://pkg.go.dev/github.com/pascalallen/hmac/v2)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/pascalallen/hmac)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pascalallen/hmac)](https://goreportcard.com/report/github.com/pascalallen/hmac)
 ![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/pascalallen/hmac/go.yml?branch=main)
@@ -14,7 +14,7 @@ hmac is a Go module that offers services for HTTP HMAC authentication.
 Use the Go CLI tool [go](https://go.dev/dl/) to install hmac.
 
 ```bash
-go get github.com/pascalallen/hmac
+go get github.com/pascalallen/hmac/v2
 ```
 
 ## Usage
@@ -22,7 +22,7 @@ go get github.com/pascalallen/hmac
 ```go
 ...
 
-import "github.com/pascalallen/hmac"
+import "github.com/pascalallen/hmac/v2"
 
 ...
 
