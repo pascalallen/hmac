@@ -28,7 +28,7 @@ import "github.com/pascalallen/hmac"
 
 publicKey := hmac.GenerateSecureRandom(16)
 privateKey := hmac.GenerateSecureRandom(16)
-var timeTolerance int64 = 300
+var timeTolerance int64 = 300 // seconds of allowed clock skew, past or future
 
 request, _ := http.NewRequest(
     http.MethodPost,
@@ -38,14 +38,41 @@ request, _ := http.NewRequest(
 
 // create request service and sign request
 requestService, _ := hmac.NewRequestService(publicKey, privateKey)
-signedRequest := requestService.SignRequest(request)
+signedRequest, _ := requestService.SignRequest(request)
 
 // create authenticator and validate signed request
 authenticator, _ := hmac.NewAuthenticator(publicKey, privateKey, timeTolerance)
-isValid := authenticator.Validate(*signedRequest)
+isValid, err := authenticator.Validate(signedRequest)
+if !isValid {
+    var validationErr *hmac.ValidationError
+    if errors.As(err, &validationErr) {
+        // validationErr.Code is a suggested HTTP status code
+        // validationErr.Message describes the failure
+    }
+}
 
 ...
 ```
+
+### Replay protection
+
+Signed requests include a random `X-Nonce` header. To reject a captured
+request that is replayed within the timestamp tolerance window, provide a
+`NonceStore` when constructing the authenticator:
+
+```go
+authenticator, _ := hmac.NewAuthenticator(publicKey, privateKey, timeTolerance, hmac.WithNonceStore(store))
+```
+
+A `NonceStore` implements `Seen(nonce string) bool` and `Store(nonce string)`
+(for example, backed by a map or Redis with a TTL of the tolerance window).
+Without a store, a captured request remains valid until its timestamp falls
+outside the tolerance window.
+
+### Notes
+
+- Query strings are signed byte-for-byte, so intermediaries that reorder
+  query parameters will invalidate the signature.
 
 ## Testing
 

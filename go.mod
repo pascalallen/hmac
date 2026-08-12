@@ -1,3 +1,3 @@
 module github.com/pascalallen/hmac
 
-go 1.19
+go 1.26

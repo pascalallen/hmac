@@ -31,19 +31,24 @@ func NewRequestService(public string, private string) (*RequestService, error) {
 	return &RequestService{public, decodedPrivateKey}, nil
 }
 
-func (rs *RequestService) SignRequest(request *http.Request) *http.Request {
-	method := request.Method
-	authority := request.Host
-	path := request.URL.Path
-	query := request.URL.RawQuery
+// SignRequest signs the request in place and returns it. The request body,
+// if any, is restored so it can still be read after signing.
+func (rs *RequestService) SignRequest(request *http.Request) (*http.Request, error) {
 	timestamp := time.Now().Unix()
 
-	content, _ := io.ReadAll(request.Body)
-	request.Body = io.NopCloser(bytes.NewReader(content))
+	var content []byte
+	if request.Body != nil {
+		var err error
+		content, err = io.ReadAll(request.Body)
+		if err != nil {
+			return nil, fmt.Errorf("unable to read request body: %w", err)
+		}
+		request.Body = io.NopCloser(bytes.NewReader(content))
+	}
 
 	headers := BuildHeaders(timestamp, content)
 
-	canonicalRequest := CreateCanonicalRequestString(method, authority, path, query, headers)
+	canonicalRequest := CreateCanonicalRequestString(request.Method, request.Host, request.URL.Path, request.URL.RawQuery, headers)
 
 	headers["Authorization"] = "HMAC-SHA256"
 	headers["Credential"] = rs.public
@@ -53,5 +58,5 @@ func (rs *RequestService) SignRequest(request *http.Request) *http.Request {
 		request.Header.Set(name, value)
 	}
 
-	return request
+	return request, nil
 }
